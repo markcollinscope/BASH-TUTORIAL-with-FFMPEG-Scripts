@@ -1,0 +1,196 @@
+#!/bin/bash
+#
+
+VERBOSE=false;
+
+callFnIfExists() 
+{
+	if test "`type -t $1`" = "function" ; then $*; fi
+}
+
+errecho() 
+{
+	(>&2 echo $*)
+}
+
+vbecho()
+{
+	if $VERBOSE; then errecho $*; fi
+}
+
+fnname()
+{
+	LEVEL=1
+	vbecho "${FUNCNAME[$LEVEL]}: $*"
+}
+
+vbfnecho()
+{
+	LEVEL=1; 
+	if test "$1" = "-l"; 
+	then 
+		LEVEL=$2;
+		shift;
+		shift
+	fi
+	vbecho "${FUNCNAME[$LEVEL]}: $*"
+}
+
+echoifset() 
+{
+	ECHO=echo
+	if test $1 = "-e"; then ECHO=errecho; shift; fi
+	if ! test -z "$*"; then $ECHO "$*"; fi
+}
+echoIfSet() { echoifset $*; }
+
+ensuredeleted() 
+{
+	F=$1
+	if test -e $F; then
+		vbecho "deleted $F"
+		rm -rf $F
+	fi
+}
+ensureDeleted() { ensureDeleted $*; }
+
+checkfileexists() 
+{
+	if ! test -f $1; then
+		errecho "File <$1> does not exist"
+		exit 1;
+	fi
+}
+checkFileExists() { checkfileexists $*; }
+
+checkdirexists()
+{
+	MSG="Directory <$1> does not exist"
+
+	if ! test -z "$2"; then MSG="$2"; fi
+
+	if ! test -d $1; then
+		errecho "$MSG"
+		callFnIfExists Usage
+		exit 1;
+	fi
+}
+checkDirExists() { checkdirexists "$1" "$2"; }
+
+ensuredirexists() {
+	DIR="$1"
+
+	if ! test -d "$DIR"; then
+		mkdir -p $DIR
+		vbecho "Created: $DIR"
+	fi
+	xc=$?
+	
+	if test $xc -ne 0 ; then 
+		errecho "Unable to create directory $DIR"
+		exit $xc; 
+	fi
+}
+ensureDirExists() { ensuredirexists $*; }
+
+getgitbranch() {
+	V=`git branch 2>/dev/null | grep \* | tr ' \*' '_'`
+	V=${V:="NoGitBranch"}
+	echo $V
+}
+getGitBranch() { getGitBranch $*; }
+
+hitKeyToContinue()
+{
+	MSG=$1
+	MSG="$MSG - hit any key to continue - ctl-c to exit"
+	errecho $MSG
+	read x
+}
+
+MESSAGE="WARNING: THIS SCRIPT MODIFIES THE DB ($DB) - continue (yes/n)"
+# Warning "This is a custom message - doesn't use the default" -- change the message shown.
+Warning()	
+{
+	if ! test -z "$1"; then MESSAGE="$1 (yes/n)" ; fi
+
+	while true; do
+		errecho $MESSAGE
+		read yn
+		case $yn in
+			[Yy]es ) break;;
+			[Nn]* ) if test -z $NOEXIT; then exit 1; fi;;
+			* ) echo "Please answer yes or no.";;
+		esac
+	done
+}
+warning() { Warning $*; }
+
+DELIM=%%
+delimit() {
+	if ! test -z $2; then DELIM=$2; fi
+
+	echo $DELIM$1$DELIM;
+}
+
+checkNotEmptyString() {
+	MSG=$1;
+	VALUE=$2;
+	if test -z "$VALUE"; then 
+		errecho $MSG; 
+		callFnIfExists Usage
+		exit 1; 
+	fi
+}
+# Usage() { echo Usage; }
+# checkNotEmptyString MSG $XXX => MSG Usage
+
+findFile() {
+	DIR=.
+	if test "$1" = "-d"; then 
+		DIR="$2"; shift; shift;
+   	elif test "$1" = "-h"; then
+		DIR="$HOME"; shift;
+	fi
+
+	FILE=$1
+	checkNotEmptyString "File must be given" $FILE
+
+	find $DIR -name $FILE -print -quit
+}
+
+randomString() 
+{
+	NUM=$1
+	if test -z "$NUM"; then NUM=10; fi
+
+	chars="abcdefghijklmnopqrstuvwxyz"
+
+	for ((i=0; i<$NUM; i++))
+	do
+		echo -n ${chars:RANDOM%${#chars}:1}
+	done
+}
+
+checkIfVerbose()
+{
+	if test "$1" = "-v"; then
+		export VERBOSE=true
+		return 0;
+	fi
+	return 1;
+}
+
+roundDown()
+{
+	NUM=$1
+	checkNotEmptyString "$(fnname) requires a number argument" $NUM
+
+	echo "$NUM/1" | bc
+}
+
+if test "$1" = "--test"; then
+	if checkIfVerbose -v; then echo VERBOSE=$VERBOSE; fi
+	echo RANDOM: $(randomString 5)
+	roundDown 100.776
+fi
