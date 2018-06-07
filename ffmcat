@@ -1,0 +1,96 @@
+#!/bin/bash
+
+. utils.shi
+
+VERBOSE=false
+TMPFILE="copy-$(randomString)"
+OUTPUTFILE=
+FILES=
+
+cleanup()
+{
+	vbecho "---"
+	vbecho "Cleaning Up - Deleting $TMPFILE"
+	vbecho "---"
+	rm -f $TMPFILE
+}
+
+trap cleanup EXIT
+
+vbecho "Using Tmp File <$TMPFILE>"
+
+createConcatTmpFile()
+{
+	rm -f $TMPFILE
+
+	for i in $*; do
+		echo file \'$i\' >> $TMPFILE
+	done
+	
+	if $VERBOSE; then
+		errecho "---- TMP FILE CONTENTS ($TMPFILE) ---"
+		1>&2 cat $TMPFILE
+		errecho "---- END ($TMPFILE) ---"
+	fi
+}
+
+doit() 
+{
+	createConcatTmpFile $*
+
+	CMD="ffmpeg -f concat -i $TMPFILE -c copy $OUTPUTFILE"
+	vbecho "$CMD"
+	$CMD
+	exit 0
+}
+
+Usage() 
+{
+	errecho
+	errecho "Usage: $0 -o|--output <output-file> <files>"
+	errecho "---"
+	errecho "Create a single video file from many"
+	errecho "-o|--output <output-file> - specify output file - mandatory"
+	errecho "NB: at least two <files> must be given"
+	exit -1
+}
+
+checkArgs()
+{
+	checkNotEmptyString "$0: An output file must be given" $OUTPUTFILE
+	if (($# < 2)); then Usage; fi
+}
+
+processArgs()
+{
+	while ! test -z "$1"; do
+		case $1 in
+			-o|--output)
+				OUTPUTFILE=$2; 
+				shift; 
+				shift;
+				;;
+			-v)
+				VERBOSE=true;
+				shift;
+				;;
+			-*)
+				errecho "Unrecognised Option: $1"
+				Usage
+				;;
+			*)  
+				FILES="$FILES "$1
+				shift;
+				;;
+		esac;
+
+	done
+
+	vbecho "Processing input files <$FILES>, output file <$OUTPUTFILE>"
+
+	checkArgs $FILES
+	doit $FILES
+}
+
+processArgs $*;
+

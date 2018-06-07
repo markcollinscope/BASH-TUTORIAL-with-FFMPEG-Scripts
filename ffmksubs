@@ -1,0 +1,78 @@
+#!/bin/bash
+
+. utils.shi
+
+VERBOSE=true;
+
+DEFAULTENDTIME=100
+ENDTIME=$DEFAULTENDTIME
+
+COUNT=0
+
+printTime()
+{
+	local SECONDS=$1;
+	checkNotEmptyString "$(fnname) requires a number of seconds argument" $SECONDS
+
+	local HOURS=$((SECONDS/3600))
+	local LEFT=$((SECONDS%3600))
+
+	local MINS=$((LEFT/60))
+	LEFT=$((LEFT%60))
+
+	local SECS=$LEFT;
+
+	printf "%02d:%02d:%02d" $HOURS $MINS $SECS
+}
+
+printSubs()
+{
+	local SECONDS=$1;
+	checkNotEmptyString "$(fnname) requires a number of seconds argument" $SECONDS
+
+	local MS0=,000
+	local MS99=,999
+
+	COUNT=$((COUNT + 1))
+
+	printf "\n"
+	printf "%d\n" $COUNT 
+	printf "%s --> %s\n" $(printTime $SECONDS)$MS0 $(printTime $SECONDS)$MS99
+	printf "[%s],[%ss]\n" $(printTime $SECONDS) $SECONDS
+}
+
+
+doit() 
+{
+	local SECS=$1
+	checkNotEmptyString "$(fnname) requires a number of minutes argument" $SECS
+
+	vbecho "Processing subs for $SECS seconds"
+
+	for ((i=0; i<$SECS; i++))
+	do
+		printSubs $i
+	done
+}
+
+Usage() 
+{
+	errecho "Usage: $0 [-t|--time <secs>]"
+	errecho "Create a SRT format file that can be burnt into a video file to show a timecode"
+	errecho "-t|--time <secs> - number of seconds of subtitles to burn - default: $DEFAULTENDTIME"
+}
+
+
+ProcessArgs()
+{
+	case $1 in
+		-t|--time) ENDTIME=$2;; 
+		-*) Usage;;
+	esac;
+}
+
+case $# in
+	0) doit $ENDTIME;;
+	2) ProcessArgs $*; doit $ENDTIME ;;
+	*) Usage ;;
+esac

@@ -1,0 +1,26 @@
+#!/bin/bash
+
+. utils.shi
+
+VERBOSE=false
+
+doit() 
+{
+	CMD="ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 $1"
+	vbecho $CMD
+
+	LEN=$($CMD)
+	roundDown $LEN
+}
+
+Usage() {
+	errecho "Usage: $0 <file>"
+	errecho "Give the length of <file> to the second (round down)"
+}
+
+if checkIfVerbose $1; then shift; fi
+
+case $# in
+	1) doit $* ;;
+	*) Usage ;;
+esac;

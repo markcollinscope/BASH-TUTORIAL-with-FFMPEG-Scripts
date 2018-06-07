@@ -1,0 +1,61 @@
+#!/bin/bash
+
+. utils.shi
+
+VERBOSE=false
+SUBSFILE=
+
+cleanup()
+{
+    vbecho "---"
+    vbecho "Cleaning Up - Deleting $SUBSFILE"
+    vbecho "---"
+    rm -f $SUBSFILE
+}
+
+trap cleanup EXIT
+
+createSubs()
+{
+	local VIDEOIN=$1
+	checkNotEmptyString "$(fnname) requires a video input to calculate length of subs to produce" $VIDEOIN
+
+	local SECS=$(ffmlen $VIDEOIN)
+	vbecho "length of input file - $SECS seconds"
+
+	ffmksubs -t $SECS > $SUBSFILE
+}
+
+doit() {
+	INPUT=$1
+	checkNotEmptyString "$0 input file requrired" $INPUT
+	OUTPUT=$2
+	checkNotEmptyString "$0 output file requrired" $OUTPUT
+
+	SUBSFILE="tmp-$(randomString 7).srt"
+	vbecho "Using Tmp File <$SUBSFILE>"
+
+	createSubs $INPUT
+
+	CMD="ffmpeg -i $INPUT -vf subtitles=$SUBSFILE -strict -2 $OUTPUT"
+	vbecho $CMD
+
+	$CMD
+}
+
+Usage() 
+{
+	errecho "Usage: $0 <input> <output>"
+	errecho "Burn timecode substitles into <input> giving <output>"
+}
+
+if checkIfVerbose $1; then shift; fi
+
+case $# in
+	2) 
+		doit $*
+		;;
+	*) 
+		Usage 
+		;;
+esac;
