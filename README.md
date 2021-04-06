@@ -1,5 +1,6 @@
 # bash-presentation
 A one hour presentation on Bash scripting with some associated resources.
+Includes for scripts to manipulate video files using ffmpeg.
 Contact: markcollinscope@gmail.com
 
 In this reposiory:
